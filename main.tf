@@ -13,7 +13,8 @@ data "aws_route53_zone" "zone" {
 
 data "aws_acm_certificate" "cert" {
   count       = local.enable_custom_domain ? 1 : 0
-  domain      = replace(var.dns_zone, "/.$/", "") # dirty hack to strip off trailing dot
+  domain      = trimsuffix(var.dns_zone, ".")
+
   statuses    = ["ISSUED"]
   most_recent = true
 }
