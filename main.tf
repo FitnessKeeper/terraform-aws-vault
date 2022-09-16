@@ -13,7 +13,7 @@ data "aws_route53_zone" "zone" {
 
 data "aws_acm_certificate" "cert" {
   count       = local.enable_custom_domain ? 1 : 0
-  domain      = trimsuffix(var.dns_zone, ".")
+  domain      = trimsuffix(var.dns_zone, ".") 
 
   statuses    = ["ISSUED"]
   most_recent = true
@@ -227,4 +227,3 @@ resource "aws_security_group" "lb-vault-sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-

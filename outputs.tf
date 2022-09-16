@@ -9,4 +9,3 @@ output "custom_public_endpoint" {
 output "public_url" {
   value = local.vault_url
 }
-
