@@ -14,7 +14,6 @@ data "aws_route53_zone" "zone" {
 data "aws_acm_certificate" "cert" {
   count       = local.enable_custom_domain ? 1 : 0
   domain      = trimsuffix(var.dns_zone, ".")
-
   statuses    = ["ISSUED"]
   most_recent = true
 }
@@ -22,38 +21,37 @@ data "aws_acm_certificate" "cert" {
 data "aws_region" "current" {
 }
 
-data "template_file" "vault" {
-  template = file("${path.module}/files/vault.json")
+locals {
+  template_vault = templatefile(
+    "${path.module}/files/vault.json",
+    {
+      datacenter            = local.vpc_name
+      env                   = var.env
+      image                 = var.vault_image
+      unseal_key0           = var.unseal_keys[0]
+      unseal_key1           = var.unseal_keys[1]
+      unseal_key2           = var.unseal_keys[2]
+      awslogs_group         = "vault-${var.env}"
+      awslogs_stream_prefix = "vault-${var.env}"
+      awslogs_region        = data.aws_region.current.name
+      vault_ui              = var.enable_vault_ui ? "true" : "false"
+    }
+  )
 
-  vars = {
-    datacenter            = local.vpc_name
-    env                   = var.env
-    image                 = var.vault_image
-    unseal_key0           = var.unseal_keys[0]
-    unseal_key1           = var.unseal_keys[1]
-    unseal_key2           = var.unseal_keys[2]
-    awslogs_group         = "vault-${var.env}"
-    awslogs_stream_prefix = "vault-${var.env}"
-    awslogs_region        = data.aws_region.current.name
-    vault_ui              = var.enable_vault_ui ? "true" : "false"
-  }
+  template_vault_init = templatefile(
+    "${path.module}/files/vault_init.json",
+    {
+      datacenter            = local.vpc_name
+      env                   = var.env
+      image                 = var.vault_image
+      awslogs_group         = "vault-${var.env}"
+      awslogs_stream_prefix = "vault-${var.env}"
+      awslogs_region        = data.aws_region.current.name
+      vault_ui              = var.enable_vault_ui ? "true" : "false"
+    }
+  )
 }
 
-data "template_file" "vault_init" {
-  template = file("${path.module}/files/vault_init.json")
-
-  vars = {
-    datacenter            = local.vpc_name
-    env                   = var.env
-    image                 = var.vault_image
-    awslogs_group         = "vault-${var.env}"
-    awslogs_stream_prefix = "vault-${var.env}"
-    awslogs_region        = data.aws_region.current.name
-    vault_ui              = var.enable_vault_ui ? "true" : "false"
-  }
-}
-
-# End Data block
 # local variables
 locals {
   initialize             = var.initialize ? true : false
@@ -81,7 +79,7 @@ locals {
 
 resource "aws_ecs_task_definition" "vault" {
   family                = "vault-${var.env}"
-  container_definitions = data.template_file.vault.rendered
+  container_definitions = local.template_vault
   network_mode          = "host"
   task_role_arn         = aws_iam_role.vault_task.arn
 }
@@ -95,7 +93,7 @@ resource "aws_cloudwatch_log_group" "vault" {
 resource "aws_ecs_task_definition" "vault_init" {
   count                 = local.vault_init_count
   family                = "vault-init-${var.env}"
-  container_definitions = data.template_file.vault_init.rendered
+  container_definitions = local.template_vault_init
   network_mode          = "host"
   task_role_arn         = aws_iam_role.vault_task.arn
 }
