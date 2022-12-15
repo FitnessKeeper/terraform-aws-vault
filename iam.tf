@@ -42,4 +42,3 @@ resource "aws_iam_role_policy_attachment" "attach-ecsServiceRole" {
   role       = aws_iam_role.ecsServiceRole.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
 }
-
